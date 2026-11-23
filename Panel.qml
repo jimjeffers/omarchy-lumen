@@ -697,23 +697,78 @@ Panel {
     }
   }
 
-  // An on/off setting, such as a backlight. The profile's note, if any, sits
-  // under the label.
-  component ToggleRow: Toggle {
+  // An on/off setting, such as a backlight: label and switch on one line.
+  // The profile's note hides behind an info icon, shown on hover.
+  component ToggleRow: CursorSurface {
     id: toggleRow
     required property var control
     required property var group
     required property int groupIndex
-    label: root.controlLabel(control)
-    description: control.note
-    foreground: root.foreground
-    accent: Commons.Color.accent
-    fontFamily: root.fontFamily
-    checked: Model.toggleOn(control)
+
+    implicitHeight: Math.max(toggleLabel.implicitHeight, toggleSwitch.implicitHeight) + Style.spacing.controlGap
     hasCursor: root.isCursor("toggle", control.id, groupIndex)
     onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(toggleRow)
-    onClicked: root.toggleControl({ group: groupIndex, setting: control.id })
-    onHovered: function(h) { if (h) root.setCursor("toggle", control.id, groupIndex) }
+    foreground: root.foreground
+    outline: true
+
+    // The whole row toggles; the info icon above it only shows its tooltip.
+    MouseArea {
+      anchors.fill: parent
+      hoverEnabled: true
+      cursorShape: Qt.PointingHandCursor
+      onEntered: root.setCursor("toggle", toggleRow.control.id, toggleRow.groupIndex)
+      onClicked: root.toggleControl({ group: toggleRow.groupIndex, setting: toggleRow.control.id })
+    }
+
+    Row {
+      anchors.left: parent.left
+      anchors.leftMargin: Style.space(6)
+      anchors.verticalCenter: parent.verticalCenter
+      spacing: Style.space(6)
+
+      PanelSectionHeader {
+        id: toggleLabel
+        text: root.controlLabel(toggleRow.control)
+        foreground: root.foreground
+        fontFamily: root.fontFamily
+        anchors.verticalCenter: parent.verticalCenter
+      }
+
+      Text {
+        visible: toggleRow.control.note !== ""
+        textFormat: Text.PlainText
+        text: "󰋽"
+        color: infoMouse.containsMouse ? root.foreground : root.dim
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.caption
+        anchors.verticalCenter: parent.verticalCenter
+
+        MouseArea {
+          id: infoMouse
+          anchors.fill: parent
+          anchors.margins: -Style.space(4)
+          hoverEnabled: true
+        }
+
+        PanelToolTip {
+          visible: infoMouse.containsMouse
+          text: toggleRow.control.note
+          fontFamily: root.fontFamily
+          width: Math.min(implicitWidth, Style.space(260))
+        }
+      }
+    }
+
+    ToggleSwitch {
+      id: toggleSwitch
+      anchors.right: parent.right
+      anchors.rightMargin: Style.space(6)
+      anchors.verticalCenter: parent.verticalCenter
+      checked: Model.toggleOn(toggleRow.control)
+      interactive: false
+      foreground: root.foreground
+      accent: Commons.Color.accent
+    }
   }
 
   // Chooses which monitor the controls edit: a button showing the current
