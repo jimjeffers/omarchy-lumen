@@ -92,11 +92,12 @@ function rows(groupList, monitorCount) {
   if (monitorCount > 1) list.push({ kind: "link", group: -1 })
   for (var g = 0; g < groupList.length; g++) {
     var m = groupList[g].monitor
+    // Picture mode first, then the sliders together. Color temperature is
+    // left to the lumen app to keep the panel short.
+    if (m.mode.options.length > 0) list.push({ kind: "pills", setting: "mode", group: g, count: m.mode.options.length })
+    if (m.halo && m.halo.options.length > 0) list.push({ kind: "pills", setting: "halo", group: g, count: m.halo.options.length })
     if (m.brightness.value >= 0) list.push({ kind: "slider", setting: "brightness", group: g })
     if (m.contrast.value >= 0) list.push({ kind: "slider", setting: "contrast", group: g })
-    if (m.mode.options.length > 0) list.push({ kind: "pills", setting: "mode", group: g, count: m.mode.options.length })
-    if (m.temp.options.length > 0) list.push({ kind: "pills", setting: "temp", group: g, count: m.temp.options.length })
-    if (m.halo && m.halo.options.length > 0) list.push({ kind: "pills", setting: "halo", group: g, count: m.halo.options.length })
     if (m.volume.value >= 0) list.push({ kind: "slider", setting: "volume", group: g })
   }
   return list

@@ -5,7 +5,7 @@
   "version": "0.2.0",
   "author": "Jim Jeffers",
   "license": "MIT",
-  "description": "Brightness, contrast, picture mode, color temperature and volume for external monitors over DDC/CI.",
+  "description": "Picture mode, brightness, contrast and volume for external monitors over DDC/CI.",
   "kinds": [
     "bar-widget"
   ],
@@ -14,7 +14,7 @@
   },
   "barWidget": {
     "displayName": "Lumen",
-    "description": "Per-monitor brightness, contrast, picture mode and color temperature for external displays.",
+    "description": "Per-monitor picture mode, brightness, contrast and volume for external displays.",
     "category": "System",
     "allowMultiple": false,
     "defaultSection": "right",

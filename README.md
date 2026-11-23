@@ -1,14 +1,15 @@
 # Lumen for the Omarchy bar
 
-An Omarchy bar widget for external monitors: brightness, contrast, picture
-mode, color temperature and volume over DDC/CI, from an icon next to the
-Display widget. Scroll the icon to change brightness; click it for the panel.
-With two or more monitors, **Link** drives them together.
+An Omarchy bar widget for external monitors: picture mode, brightness,
+contrast and volume over DDC/CI, from an icon next to the Display widget.
+Scroll the icon to change brightness; click it for the panel. With two or
+more monitors, **Link** drives them together.
 
 ![The Lumen panel](preview.png)
 
 The panel is keyboard driven: arrows move between rows and adjust values,
-Escape closes it. **Open Lumen** launches the full app.
+Escape closes it. **Open Lumen** launches the full app, which also has color
+temperature.
 
 ## Requirements
 

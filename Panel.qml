@@ -114,7 +114,6 @@ Panel {
     if (setting === "contrast") return strings.t("contrast", "Contrast")
     if (setting === "volume") return strings.t("volume", "Speaker volume")
     if (setting === "mode") return strings.t("mode", "Picture mode")
-    if (setting === "temp") return strings.t("temp", "Color temperature")
     if (setting === "halo") return strings.t("halo", "Backlight")
     return setting
   }
@@ -474,11 +473,10 @@ Panel {
                 }
               }
 
+              PillRow { setting: "mode"; group: section.group; groupIndex: section.index; width: parent.width }
+              PillRow { setting: "halo"; group: section.group; groupIndex: section.index; width: parent.width }
               SliderRow { setting: "brightness"; group: section.group; groupIndex: section.index; width: parent.width }
               SliderRow { setting: "contrast"; group: section.group; groupIndex: section.index; width: parent.width }
-              PillRow { setting: "mode"; group: section.group; groupIndex: section.index; width: parent.width }
-              PillRow { setting: "temp"; group: section.group; groupIndex: section.index; width: parent.width }
-              PillRow { setting: "halo"; group: section.group; groupIndex: section.index; width: parent.width }
               SliderRow { setting: "volume"; group: section.group; groupIndex: section.index; width: parent.width }
             }
           }

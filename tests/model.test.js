@@ -62,7 +62,7 @@ test("rows skip settings a monitor lacks", () => {
   const unlinked = M.rows(M.groups(ms, false), 2)
   assert.strictEqual(unlinked[0].kind, "link")
   const second = unlinked.filter(r => r.group === 1).map(r => r.setting)
-  assert.deepStrictEqual(second, ["brightness", "contrast", "mode"])
+  assert.deepStrictEqual(second, ["mode", "brightness", "contrast"])
 })
 
 test("local changes follow linking", () => {
@@ -72,6 +72,12 @@ test("local changes follow linking", () => {
   const one = M.applyLocal(ms, "BBB", "brightness", 10)
   assert.deepStrictEqual(one.map(m => m.brightness.value), [36, 10])
   assert.strictEqual(ms[0].brightness.value, 36)  // original untouched
+})
+
+test("picture mode comes first, then sliders, and no color temperature", () => {
+  const ms = M.parseState(state).monitors
+  const first = M.rows(M.groups(ms, true), 2).filter(r => r.group === 0).map(r => r.setting)
+  assert.deepStrictEqual(first, ["mode", "brightness", "contrast", "volume"])
 })
 
 test("clamp", () => {
