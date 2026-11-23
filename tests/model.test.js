@@ -50,34 +50,34 @@ test("pretty labels swap hyphens but keep hex", () => {
   assert.strictEqual(M.prettyLabel("0x30"), "0x30")
 })
 
-test("linked shows one group, unlinked one per monitor", () => {
+test("selection picks all or one monitor, falling back to all", () => {
   const ms = M.parseState(state).monitors
-  assert.deepStrictEqual(M.groups(ms, true).map(g => g.target), ["all"])
-  assert.deepStrictEqual(M.groups(ms, false).map(g => g.position), ["left", "right"])
-  assert.deepStrictEqual(M.groups([ms[0]], true).map(g => g.position), ["only"])
+  assert.deepStrictEqual(M.groups(ms, "all").map(g => g.target), ["all"])
+  assert.deepStrictEqual(M.groups(ms, "BBB").map(g => [g.target, g.position]), [["BBB", "right"]])
+  assert.deepStrictEqual(M.groups(ms, "unplugged").map(g => g.target), ["all"])
+  assert.strictEqual(M.resolveSelection(ms, "unplugged"), "all")
+  assert.deepStrictEqual(M.groups([ms[0]], "all").map(g => [g.target, g.position]), [["AAA", "only"]])
 })
 
-test("rows skip settings a monitor lacks", () => {
+test("targets list all then each monitor by position", () => {
   const ms = M.parseState(state).monitors
-  const unlinked = M.rows(M.groups(ms, false), 2)
-  assert.strictEqual(unlinked[0].kind, "link")
-  const second = unlinked.filter(r => r.group === 1).map(r => r.setting)
-  assert.deepStrictEqual(second, ["mode", "brightness", "contrast"])
+  assert.deepStrictEqual(M.targets(ms).map(t => [t.value, t.position]), [["all", "all"], ["AAA", "left"], ["BBB", "right"]])
 })
 
-test("local changes follow linking", () => {
+test("rows lead with picture mode, skip what a monitor lacks, after the picker", () => {
+  const ms = M.parseState(state).monitors
+  assert.deepStrictEqual(M.rows(M.groups(ms, "all"), 2).map(r => r.setting || r.kind), ["target", "mode", "brightness", "contrast", "volume"])
+  assert.deepStrictEqual(M.rows(M.groups(ms, "BBB"), 2).map(r => r.setting || r.kind), ["target", "mode", "brightness", "contrast"])
+  assert.deepStrictEqual(M.rows(M.groups([ms[0]], "all"), 1).map(r => r.setting || r.kind), ["mode", "brightness", "contrast", "volume"])
+})
+
+test("local changes follow the target", () => {
   const ms = M.parseState(state).monitors
   const all = M.applyLocal(ms, "all", "brightness", 70)
   assert.deepStrictEqual(all.map(m => m.brightness.value), [70, 70])
   const one = M.applyLocal(ms, "BBB", "brightness", 10)
   assert.deepStrictEqual(one.map(m => m.brightness.value), [36, 10])
   assert.strictEqual(ms[0].brightness.value, 36)  // original untouched
-})
-
-test("picture mode comes first, then sliders, and no color temperature", () => {
-  const ms = M.parseState(state).monitors
-  const first = M.rows(M.groups(ms, true), 2).filter(r => r.group === 0).map(r => r.setting)
-  assert.deepStrictEqual(first, ["mode", "brightness", "contrast", "volume"])
 })
 
 test("clamp", () => {

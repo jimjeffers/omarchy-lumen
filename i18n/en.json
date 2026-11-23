@@ -1,10 +1,8 @@
 {
   "title": "Monitors",
-  "link": "Link monitors",
   "all": "All monitors",
-  "left": "Left",
-  "right": "Right",
-  "middle": "Middle",
+  "left": "Left monitor",
+  "right": "Right monitor",
   "brightness": "Brightness",
   "contrast": "Contrast",
   "volume": "Speaker volume",
@@ -13,5 +11,6 @@
   "open": "Open Lumen",
   "reading": "Reading settings…",
   "noMonitors": "No monitors with DDC/CI found",
-  "missing": "Could not run lumen. Install it from the lumen project with bin/install."
+  "missing": "Could not run lumen. Install it from the lumen project with bin/install.",
+  "numbered": "Monitor %1"
 }

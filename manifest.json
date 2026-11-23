@@ -19,16 +19,9 @@
     "allowMultiple": false,
     "defaultSection": "right",
     "defaults": {
-      "lumenPath": "",
-      "linked": true
+      "lumenPath": ""
     },
     "schema": [
-      {
-        "key": "linked",
-        "type": "boolean",
-        "label": "Link monitors when the panel opens",
-        "defaultValue": true
-      },
       {
         "key": "lumenPath",
         "type": "path",

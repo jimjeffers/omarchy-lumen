@@ -3,7 +3,8 @@
 An Omarchy bar widget for external monitors: picture mode, brightness,
 contrast and volume over DDC/CI, from an icon next to the Display widget.
 Scroll the icon to change brightness; click it for the panel. With two or
-more monitors, **Link** drives them together.
+more monitors, the picker in the top right chooses whether the controls
+edit all of them or just one; the panel remembers the choice.
 
 ![The Lumen panel](preview.png)
 
@@ -34,7 +35,6 @@ Then add **Lumen** to the bar from the bar settings if it doesn't appear.
 
 | Setting | Default | |
 |---|---|---|
-| Link monitors when the panel opens | on | Start in linked mode |
 | Path to lumen | empty | Leave empty to use `lumen` from `PATH` |
 
 ## Remove

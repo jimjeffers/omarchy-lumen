@@ -70,26 +70,54 @@ function prettyLabel(label) {
   return s.replace(/-/g, " ")
 }
 
-// The groups of controls the panel shows: one for every monitor when
-// unlinked, or a single group driving all of them when linked. Values come
-// from the first monitor in the group.
-function groups(monitors, linked) {
-  if (!monitors || monitors.length === 0) return []
-  if (linked && monitors.length > 1)
-    return [{ target: "all", monitor: monitors[0], position: "all" }]
-  var out = []
-  for (var i = 0; i < monitors.length; i++) {
-    var position = monitors.length === 1 ? "only"
-      : i === 0 ? "left" : i === monitors.length - 1 ? "right" : "middle"
-    out.push({ target: monitors[i].serial || monitors[i].connector, monitor: monitors[i], position: position })
-  }
-  return out
+// Where each monitor sits, left to right as Hyprland arranges them.
+function position(index, count) {
+  if (count === 1) return "only"
+  if (index === 0) return "left"
+  if (index === count - 1) return "right"
+  return "middle"
 }
 
-// Keyboard rows, top to bottom. Each row is one slider or one row of pills.
+// The monitor the panel is editing: "all", or a serial that is connected.
+// Anything else (a monitor that was unplugged, a garbled saved value) falls
+// back to "all".
+function resolveSelection(monitors, selection) {
+  var s = String(selection || "all")
+  for (var i = 0; i < (monitors || []).length; i++)
+    if (s !== "" && monitors[i].serial === s) return s
+  return "all"
+}
+
+// The single group of controls the panel shows: every monitor at once, or
+// the selected one. Values come from that monitor (the first one for "all").
+// A lone monitor is targeted by serial, so changes never fan out.
+function groups(monitors, selection) {
+  if (!monitors || monitors.length === 0) return []
+  var s = resolveSelection(monitors, selection)
+  if (monitors.length === 1)
+    return [{ target: monitors[0].serial || monitors[0].connector, monitor: monitors[0], position: "only" }]
+  if (s === "all") return [{ target: "all", monitor: monitors[0], position: "all" }]
+  for (var i = 0; i < monitors.length; i++)
+    if (monitors[i].serial === s)
+      return [{ target: s, monitor: monitors[i], position: position(i, monitors.length) }]
+  return []
+}
+
+// Choices for the monitor picker: "all" first, then each monitor by where it
+// sits. Labels are keys the panel translates.
+function targets(monitors) {
+  var list = [{ value: "all", position: "all", index: -1 }]
+  for (var i = 0; i < (monitors || []).length; i++)
+    if (monitors[i].serial !== "")
+      list.push({ value: monitors[i].serial, position: position(i, monitors.length), index: i })
+  return list
+}
+
+// Keyboard rows, top to bottom: the monitor picker (only when there is more
+// than one monitor), then one row per slider or row of pills.
 function rows(groupList, monitorCount) {
   var list = []
-  if (monitorCount > 1) list.push({ kind: "link", group: -1 })
+  if (monitorCount > 1) list.push({ kind: "target", group: -1 })
   for (var g = 0; g < groupList.length; g++) {
     var m = groupList[g].monitor
     // Picture mode first, then the sliders together. Color temperature is
@@ -134,7 +162,10 @@ if (typeof module !== "undefined") {
     parseState: parseState,
     currentLabel: currentLabel,
     prettyLabel: prettyLabel,
+    position: position,
+    resolveSelection: resolveSelection,
     groups: groups,
+    targets: targets,
     rows: rows,
     clamp: clamp,
     applyLocal: applyLocal

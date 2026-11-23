@@ -29,9 +29,14 @@ Panel {
   property var monitors: []
   property string error: ""
   property bool loaded: false
-  property bool linked: setting("linked", true) !== false
+  // Which monitor the controls edit: "all" or a serial. Remembered across
+  // restarts in the shell's state folder, not in shell.json, so picking a
+  // monitor never rewrites the user's config.
+  property string selection: "all"
+  readonly property string activeSelection: Model.resolveSelection(monitors, selection)
+  readonly property string stateDirectory: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/lumen"
 
-  readonly property var groupList: Model.groups(monitors, linked)
+  readonly property var groupList: Model.groups(monitors, selection)
   readonly property var rowList: Model.rows(groupList, monitors.length)
 
   // Keyboard cursor, shared with hover like the stock panels.
@@ -92,21 +97,23 @@ Panel {
     clampCursor()
   }
 
-  function positionLabel(position, model) {
-    if (position === "all") return strings.t("all", "All monitors")
-    if (position === "left") return strings.t("left", "Left") + " · " + model
-    if (position === "right") return strings.t("right", "Right") + " · " + model
-    if (position === "middle") return strings.t("middle", "Middle") + " · " + model
-    return model
+  function targetLabel(t) {
+    if (t.position === "all") return strings.t("all", "All monitors")
+    if (t.position === "left") return strings.t("left", "Left monitor")
+    if (t.position === "right") return strings.t("right", "Right monitor")
+    return strings.t("numbered", "Monitor %1").arg(t.index + 1)
   }
 
-  // What the controls are changing right now, for the footer: every monitor
-  // when linked, otherwise the monitor whose row the cursor is on.
-  function editingLabel() {
-    if (groupList.length === 0) return ""
-    var r = rowList[cursorRow]
-    var g = groupList[r && r.group >= 0 && r.group < groupList.length ? r.group : 0]
-    return positionLabel(g.position, g.monitor.model)
+  function targetOptions() {
+    var list = Model.targets(monitors)
+    var out = []
+    for (var i = 0; i < list.length; i++) out.push({ value: list[i].value, label: targetLabel(list[i]) })
+    return out
+  }
+
+  function select(value) {
+    selection = value === "" ? "all" : value
+    selectionFile.setText(selection + "\n")
   }
 
   function settingLabel(setting) {
@@ -172,7 +179,11 @@ Panel {
   function activateCursor() {
     var r = rowList[cursorRow]
     if (!r) return
-    if (r.kind === "link") { linked = !linked; return }
+    if (r.kind === "target") {
+      var picker = panel.loadedContent ? panel.loadedContent.targetPicker : null
+      if (picker) picker.open()
+      return
+    }
     if (r.kind === "pills") {
       var g = groupList[r.group]
       var option = g.monitor[r.setting].options[cursorCol]
@@ -196,7 +207,7 @@ Panel {
     if (error !== "") return error
     if (!loaded) return strings.t("reading", "Reading settings…")
     if (monitors.length === 0) return strings.t("noMonitors", "No monitors with DDC/CI found")
-    var m = monitors[0]
+    var m = groupList.length > 0 ? groupList[0].monitor : monitors[0]
     var mode = Model.prettyLabel(Model.currentLabel(m.mode))
     var parts = []
     if (mode !== "") parts.push(mode)
@@ -212,14 +223,21 @@ Panel {
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
-  Component.onCompleted: refresh()
+  Component.onCompleted: {
+    // The saved selection lives here; made early so the first save lands.
+    Quickshell.execDetached(["mkdir", "-p", stateDirectory])
+    refresh()
+  }
 
   onOpenedChanged: {
     if (opened) {
       refresh()
       cursorActive = false
-      cursorRow = rowList.length > 1 && rowList[0].kind === "link" ? 1 : 0
+      cursorRow = 0
       cursorCol = 0
+    } else if (panel.loadedContent) {
+      // The monitor menu is a popup of its own; close it with the panel.
+      panel.loadedContent.targetPicker.close()
     }
   }
   onRowListChanged: clampCursor()
@@ -238,6 +256,21 @@ Panel {
     interval: 220
     onTriggered: if (root.sliderPending)
       root.change(root.sliderPending.target, root.sliderPending.setting, root.sliderPending.value)
+  }
+
+  FileView {
+    id: selectionFile
+    path: root.stateDirectory + "/bar-selection"
+    atomicWrites: true
+    printErrors: false
+    // Every bar has its own copy of this panel; watching the file keeps
+    // them on the same monitor.
+    watchChanges: true
+    onFileChanged: reload()
+    onLoaded: {
+      var saved = String(text() || "").trim()
+      root.selection = saved === "" ? "all" : saved.slice(0, 64)
+    }
   }
 
   Process {
@@ -283,8 +316,8 @@ Panel {
     bar: root.bar
     text: "󰃠"
     onPressed: function(b) { root.toggle() }
-    // Scrolling on the icon nudges brightness of every monitor (or the left
-    // one when unlinked), like the Display icon does for the focused monitor.
+    // Scrolling on the icon nudges brightness of whatever the panel edits
+    // (every monitor, or the selected one).
     onWheelMoved: function(delta) {
       if (root.groupList.length === 0) return
       var wheel = Util.wheelSteps(root.wheelAccumulator, delta)
@@ -311,6 +344,8 @@ Panel {
 
     content: PanelKeyCatcher {
       property alias scrollArea: scrollArea
+      property alias targetPicker: targetPicker
+      blocked: targetPicker.popupOpen
       implicitHeight: panelColumn.implicitHeight
       anchors.fill: parent
       onMoveRequested: function(dx, dy) {
@@ -341,7 +376,7 @@ Panel {
           // ---------- Hero ----------
           Item {
             width: parent.width
-            implicitHeight: Math.max(heroIcon.implicitHeight, heroLabels.implicitHeight, linkControl.visible ? linkControl.implicitHeight : 0)
+            implicitHeight: Math.max(heroIcon.implicitHeight, heroLabels.implicitHeight, targetPicker.visible ? targetPicker.implicitHeight : 0)
 
             Text {
               id: heroIcon
@@ -358,8 +393,8 @@ Panel {
               id: heroLabels
               anchors.left: heroIcon.right
               anchors.leftMargin: Style.space(14)
-              anchors.right: linkControl.visible ? linkControl.left : parent.right
-              anchors.rightMargin: linkControl.visible ? Style.space(12) : 0
+              anchors.right: targetPicker.visible ? targetPicker.left : parent.right
+              anchors.rightMargin: targetPicker.visible ? Style.space(12) : 0
               anchors.verticalCenter: parent.verticalCenter
               spacing: Style.space(2)
 
@@ -388,44 +423,19 @@ Panel {
               }
             }
 
-            // Link sits in the title row's top-right corner, only when there
-            // is more than one monitor to link, label above the switch. The label
-            // clicks too.
-            Column {
-              id: linkControl
+            // Which monitor the controls edit, remembered between sessions.
+            // Only shown when there is more than one monitor.
+            MonitorPicker {
+              id: targetPicker
               visible: root.monitors.length > 1
               anchors.right: parent.right
-              anchors.top: parent.top
-              spacing: Style.space(6)
-
-              Text {
-                textFormat: Text.PlainText
-                text: strings.t("link", "Link monitors")
-                color: root.foreground
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.caption
-                font.bold: true
-                anchors.right: parent.right
-
-                MouseArea {
-                  anchors.fill: parent
-                  hoverEnabled: true
-                  cursorShape: Qt.PointingHandCursor
-                  onEntered: root.setCursor("link", undefined, -1)
-                  onClicked: root.linked = !root.linked
-                }
-              }
-
-              ToggleSwitch {
-                checked: root.linked
-                foreground: root.foreground
-                accent: Commons.Color.accent
-                hasCursor: root.isCursor("link", undefined, -1)
-                anchors.right: parent.right
-                onToggled: root.linked = !root.linked
-                onHovered: function(h) { if (h) root.setCursor("link", undefined, -1) }
-                onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(linkControl)
-              }
+              anchors.verticalCenter: parent.verticalCenter
+              options: root.targetOptions()
+              value: root.activeSelection
+              hasCursor: root.isCursor("target", undefined, -1)
+              onPicked: function(v) { root.select(v) }
+              onHovered: function(h) { if (h) root.setCursor("target", undefined, -1) }
+              onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(targetPicker)
             }
           }
 
@@ -444,33 +454,15 @@ Panel {
 
               PanelSeparator { foreground: root.foreground }
 
-              // With one group the footer already names it, so the header
-              // only appears to separate monitors, or to show an error.
-              Item {
+              Text {
+                textFormat: Text.PlainText
+                visible: section.monitor.error !== ""
+                text: section.monitor.error
+                color: Commons.Color.urgent
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.caption
+                wrapMode: Text.Wrap
                 width: parent.width
-                visible: root.groupList.length > 1 || section.monitor.error !== ""
-                implicitHeight: sectionHeader.implicitHeight
-                PanelSectionHeader {
-                  id: sectionHeader
-                  visible: root.groupList.length > 1
-                  text: root.positionLabel(section.group.position, section.monitor.model)
-                  foreground: root.foreground
-                  fontFamily: root.fontFamily
-                  anchors.left: parent.left
-                }
-                Text {
-                  textFormat: Text.PlainText
-                  visible: section.monitor.error !== ""
-                  text: section.monitor.error
-                  color: Commons.Color.urgent
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.caption
-                  anchors.right: parent.right
-                  anchors.verticalCenter: parent.verticalCenter
-                  elide: Text.ElideRight
-                  width: parent.width / 2
-                  horizontalAlignment: Text.AlignRight
-                }
               }
 
               PillRow { setting: "mode"; group: section.group; groupIndex: section.index; width: parent.width }
@@ -483,7 +475,7 @@ Panel {
 
           PanelSeparator { foreground: root.foreground }
 
-          // Footer: launch the app on the left, what's being edited on the right.
+          // Footer: launch the full app.
           Item {
             width: parent.width
             implicitHeight: openButton.implicitHeight
@@ -502,21 +494,6 @@ Panel {
                 root.close()
                 Quickshell.execDetached(["uwsm-app", "--", root.lumen])
               }
-            }
-
-            Text {
-              textFormat: Text.PlainText
-              text: root.editingLabel()
-              color: root.dim
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              font.bold: true
-              elide: Text.ElideRight
-              horizontalAlignment: Text.AlignRight
-              anchors.left: openButton.right
-              anchors.leftMargin: Style.space(12)
-              anchors.right: parent.right
-              anchors.verticalCenter: parent.verticalCenter
             }
           }
 
@@ -636,6 +613,110 @@ Panel {
           onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(this)
           onClicked: root.change(pillRow.group.target, pillRow.setting, modelData.value)
           onHovered: function(h) { if (h) root.setCursor("pills", pillRow.setting, pillRow.groupIndex, index) }
+        }
+      }
+    }
+  }
+
+  // Chooses which monitor the controls edit: a button showing the current
+  // choice, with a menu below it.
+  component MonitorPicker: Item {
+    id: picker
+    property var options: []
+    property string value: "all"
+    property bool hasCursor: false
+    property int menuIndex: 0
+    readonly property bool popupOpen: menu.opened
+
+    signal picked(string value)
+    signal hovered(bool isHovered)
+
+    function open() { menu.open() }
+    function close() { menu.close() }
+
+    function indexOfValue() {
+      for (var i = 0; i < options.length; i++) if (options[i].value === value) return i
+      return 0
+    }
+    function currentLabel() {
+      var i = indexOfValue()
+      return options.length > 0 ? options[i].label : ""
+    }
+    function choose(i) {
+      if (i < 0 || i >= options.length) return
+      menu.close()
+      picked(options[i].value)
+    }
+
+    implicitWidth: trigger.implicitWidth
+    implicitHeight: trigger.implicitHeight
+
+    Button {
+      id: trigger
+      anchors.right: parent.right
+      text: picker.currentLabel() + "  󰅀"
+      fontSize: Style.font.caption
+      foreground: root.foreground
+      fontFamily: root.fontFamily
+      bordered: true
+      hasCursor: picker.hasCursor
+      onClicked: menu.opened ? menu.close() : menu.open()
+      onHovered: function(h) { picker.hovered(h) }
+    }
+
+    Popup {
+      id: menu
+      width: Math.max(trigger.width, menuColumn.implicitWidth + leftPadding + rightPadding)
+      x: trigger.x + trigger.width - width
+      y: trigger.height + Style.spacing.xxs
+      padding: Style.spacing.xs
+      closePolicy: Popup.CloseOnPressOutsideParent | Popup.CloseOnEscape
+      focus: true
+
+      background: BorderSurface {
+        color: Commons.Color.popups.background
+        borderSpec: Border.localOrSurfaceSpec("popups", "border", Commons.Color.popups.border, Commons.Color.popups.border, Style.normalBorderWidth)
+        radius: Style.cornerRadius
+      }
+
+      onOpened: {
+        picker.menuIndex = picker.indexOfValue()
+        menuColumn.forceActiveFocus()
+      }
+
+      contentItem: Column {
+        id: menuColumn
+        spacing: Style.spacing.labelGap
+        focus: true
+
+        Keys.onPressed: function(event) {
+          if (event.key === Qt.Key_Escape) { menu.close(); event.accepted = true }
+          else if (event.key === Qt.Key_Down || event.text === "j") {
+            picker.menuIndex = Math.min(picker.options.length - 1, picker.menuIndex + 1); event.accepted = true
+          } else if (event.key === Qt.Key_Up || event.text === "k") {
+            picker.menuIndex = Math.max(0, picker.menuIndex - 1); event.accepted = true
+          } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+            picker.choose(picker.menuIndex); event.accepted = true
+          }
+        }
+
+        Repeater {
+          model: picker.options
+
+          Button {
+            required property var modelData
+            required property int index
+            width: menuColumn.width
+            leftAlign: true
+            text: modelData.label
+            fontSize: Style.font.caption
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+            active: modelData.value === picker.value
+            hasCursor: index === picker.menuIndex
+            onClicked: picker.choose(index)
+            onHovered: function(h) { if (h) picker.menuIndex = index }
+          }
         }
       }
     }
