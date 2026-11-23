@@ -350,7 +350,8 @@ Panel {
               id: heroLabels
               anchors.left: heroIcon.right
               anchors.leftMargin: Style.space(14)
-              anchors.right: parent.right
+              anchors.right: linkControl.visible ? linkControl.left : parent.right
+              anchors.rightMargin: linkControl.visible ? Style.space(12) : 0
               anchors.verticalCenter: parent.verticalCenter
               spacing: Style.space(2)
 
@@ -378,23 +379,45 @@ Panel {
                 width: parent.width
               }
             }
-          }
 
-          // ---------- Link ----------
-          Toggle {
-            id: linkToggle
-            visible: root.monitors.length > 1
-            width: parent.width
-            label: strings.t("link", "Link monitors")
-            description: strings.t("linkDescription", "Changes apply to every monitor")
-            foreground: root.foreground
-            accent: Commons.Color.accent
-            fontFamily: root.fontFamily
-            checked: root.linked
-            hasCursor: root.isCursor("link", undefined, -1)
-            onClicked: root.linked = !root.linked
-            onHovered: function(h) { if (h) root.setCursor("link", undefined, -1) }
-            onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(linkToggle)
+            // Link sits in the title row's top-right corner, only when there
+            // is more than one monitor to link. The label clicks too.
+            Row {
+              id: linkControl
+              visible: root.monitors.length > 1
+              anchors.right: parent.right
+              anchors.top: parent.top
+              spacing: Style.space(10)
+
+              Text {
+                textFormat: Text.PlainText
+                text: strings.t("link", "Link monitors")
+                color: root.foreground
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.caption
+                font.bold: true
+                anchors.verticalCenter: parent.verticalCenter
+
+                MouseArea {
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onEntered: root.setCursor("link", undefined, -1)
+                  onClicked: root.linked = !root.linked
+                }
+              }
+
+              ToggleSwitch {
+                checked: root.linked
+                foreground: root.foreground
+                accent: Commons.Color.accent
+                hasCursor: root.isCursor("link", undefined, -1)
+                anchors.verticalCenter: parent.verticalCenter
+                onToggled: root.linked = !root.linked
+                onHovered: function(h) { if (h) root.setCursor("link", undefined, -1) }
+                onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(linkControl)
+              }
+            }
           }
 
           // ---------- One section per group ----------
