@@ -100,6 +100,15 @@ Panel {
     return model
   }
 
+  // What the controls are changing right now, for the footer: every monitor
+  // when linked, otherwise the monitor whose row the cursor is on.
+  function editingLabel() {
+    if (groupList.length === 0) return ""
+    var r = rowList[cursorRow]
+    var g = groupList[r && r.group >= 0 && r.group < groupList.length ? r.group : 0]
+    return positionLabel(g.position, g.monitor.model)
+  }
+
   function settingLabel(setting) {
     if (setting === "brightness") return strings.t("brightness", "Brightness")
     if (setting === "contrast") return strings.t("contrast", "Contrast")
@@ -436,11 +445,15 @@ Panel {
 
               PanelSeparator { foreground: root.foreground }
 
+              // With one group the footer already names it, so the header
+              // only appears to separate monitors, or to show an error.
               Item {
                 width: parent.width
+                visible: root.groupList.length > 1 || section.monitor.error !== ""
                 implicitHeight: sectionHeader.implicitHeight
                 PanelSectionHeader {
                   id: sectionHeader
+                  visible: root.groupList.length > 1
                   text: root.positionLabel(section.group.position, section.monitor.model)
                   foreground: root.foreground
                   fontFamily: root.fontFamily
@@ -472,16 +485,40 @@ Panel {
 
           PanelSeparator { foreground: root.foreground }
 
-          Button {
-            text: strings.t("open", "Open Lumen")
-            iconText: "󰍹"
-            fontSize: Style.font.caption
-            foreground: root.foreground
-            fontFamily: root.fontFamily
-            bordered: true
-            onClicked: {
-              root.close()
-              Quickshell.execDetached(["uwsm-app", "--", root.lumen])
+          // Footer: launch the app on the left, what's being edited on the right.
+          Item {
+            width: parent.width
+            implicitHeight: openButton.implicitHeight
+
+            Button {
+              id: openButton
+              anchors.left: parent.left
+              anchors.verticalCenter: parent.verticalCenter
+              text: strings.t("open", "Open Lumen")
+              iconText: "󰍹"
+              fontSize: Style.font.caption
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+              bordered: true
+              onClicked: {
+                root.close()
+                Quickshell.execDetached(["uwsm-app", "--", root.lumen])
+              }
+            }
+
+            Text {
+              textFormat: Text.PlainText
+              text: root.editingLabel()
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              font.bold: true
+              elide: Text.ElideRight
+              horizontalAlignment: Text.AlignRight
+              anchors.left: openButton.right
+              anchors.leftMargin: Style.space(12)
+              anchors.right: parent.right
+              anchors.verticalCenter: parent.verticalCenter
             }
           }
 
