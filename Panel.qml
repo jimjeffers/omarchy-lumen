@@ -333,7 +333,7 @@ Panel {
           // ---------- Hero ----------
           Item {
             width: parent.width
-            implicitHeight: Math.max(heroIcon.implicitHeight, heroLabels.implicitHeight)
+            implicitHeight: Math.max(heroIcon.implicitHeight, heroLabels.implicitHeight, linkControl.visible ? linkControl.implicitHeight : 0)
 
             Text {
               id: heroIcon
@@ -381,13 +381,14 @@ Panel {
             }
 
             // Link sits in the title row's top-right corner, only when there
-            // is more than one monitor to link. The label clicks too.
-            Row {
+            // is more than one monitor to link, label above the switch. The label
+            // clicks too.
+            Column {
               id: linkControl
               visible: root.monitors.length > 1
               anchors.right: parent.right
               anchors.top: parent.top
-              spacing: Style.space(10)
+              spacing: Style.space(6)
 
               Text {
                 textFormat: Text.PlainText
@@ -396,7 +397,7 @@ Panel {
                 font.family: root.fontFamily
                 font.pixelSize: Style.font.caption
                 font.bold: true
-                anchors.verticalCenter: parent.verticalCenter
+                anchors.right: parent.right
 
                 MouseArea {
                   anchors.fill: parent
@@ -412,7 +413,7 @@ Panel {
                 foreground: root.foreground
                 accent: Commons.Color.accent
                 hasCursor: root.isCursor("link", undefined, -1)
-                anchors.verticalCenter: parent.verticalCenter
+                anchors.right: parent.right
                 onToggled: root.linked = !root.linked
                 onHovered: function(h) { if (h) root.setCursor("link", undefined, -1) }
                 onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(linkControl)
