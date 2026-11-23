@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "io.github.jimjeffers.lumen",
   "name": "Lumen",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "author": "Jim Jeffers",
   "license": "MIT",
-  "description": "Monitor settings over DDC/CI: brightness, contrast and volume for any monitor, plus picture modes, backlights and more for models with a lumen profile.",
+  "description": "Monitor settings over DDC/CI: brightness, contrast and volume for any monitor, plus picture modes, backlights and more for models with a Lumen profile.",
   "kinds": [
     "bar-widget"
   ],
@@ -25,8 +25,8 @@
       {
         "key": "lumenPath",
         "type": "path",
-        "label": "Path to lumen",
-        "description": "Leave empty to find lumen on PATH.",
+        "label": "Path to lumen-ddc",
+        "description": "Leave empty to find lumen-ddc on PATH.",
         "defaultValue": ""
       }
     ]

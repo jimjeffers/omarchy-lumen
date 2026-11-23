@@ -10,10 +10,10 @@
   "open": "Open Lumen",
   "reading": "Reading settings…",
   "noMonitors": "No monitors with DDC/CI found",
-  "missing": "Could not run lumen. Install it from the lumen project with bin/install.",
+  "missing": "Could not run lumen-ddc. Install the Lumen app: github.com/jimjeffers/lumen-ddc",
   "numbered": "Monitor %1",
   "temp": "Color temperature",
   "unsupported": "%1 has no Lumen profile yet, so only standard controls are shown. Add one so everyone with this monitor gets its full controls.",
   "contribute": "How to add your monitor",
-  "outdated": "This panel needs lumen 0.3 or newer. Update the lumen app."
+  "outdated": "This panel needs lumen-ddc 0.4 or newer. Update the Lumen app."
 }

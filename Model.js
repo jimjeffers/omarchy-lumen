@@ -1,9 +1,9 @@
 // Pure helpers for the Lumen bar panel. No QML here, so Node can test them
 // (tests/model.test.js).
 
-// Parses `lumen state` output (lumen 0.3+) into a list of monitors, each
+// Parses `lumen-ddc state` output (0.3+) into a list of monitors, each
 // with the controls its profile gives it. Bad input gives no monitors.
-// `outdated` is set when the output comes from an older lumen without
+// `outdated` is set when the output comes from an older Lumen without
 // profiles.
 function parseState(text) {
   var parsed
@@ -194,7 +194,7 @@ function clamp(value, min, max) {
 }
 
 // Applies a change locally so the panel reacts before the monitor answers,
-// following the same rules as lumen: "all" reaches every monitor with the
+// following the same rules as lumen-ddc: "all" reaches every monitor with the
 // control, but choices and toggles only reach monitors with the same profile.
 // Returns a new monitor list.
 function applyLocal(monitors, target, id, value) {

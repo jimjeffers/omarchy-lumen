@@ -8,10 +8,10 @@ import qs.Commons as Commons
 import "Model.js" as Model
 
 // Lumen in the Omarchy bar: monitor settings over DDC/CI. Which controls a
-// monitor has comes from its lumen profile (picture modes, backlights, …);
+// monitor has comes from its Lumen profile (picture modes, backlights, …);
 // models without one get the standard controls and a note on adding them.
-// All monitor work goes through the `lumen` command (lumen state / lumen
-// set), which owns the DDC queueing and the safeguard that turns a hub
+// All monitor work goes through the `lumen-ddc` command (lumen-ddc state /
+// lumen-ddc set), which owns the DDC queueing and the safeguard that turns a hub
 // monitor back on.
 Panel {
   id: root
@@ -22,7 +22,8 @@ Panel {
 
   readonly property string lumen: {
     var path = String(setting("lumenPath", "") || "")
-    return path !== "" ? path : "lumen"
+    // Never plain "lumen": on the AUR that name is an unrelated tool.
+    return path !== "" ? path : "lumen-ddc"
   }
   readonly property color foreground: bar ? bar.foreground : Commons.Color.foreground
   readonly property color dim: Qt.darker(foreground, 1.4)
@@ -38,7 +39,7 @@ Panel {
   // monitor never rewrites the user's config.
   property string selection: "all"
   readonly property string activeSelection: Model.resolveSelection(monitors, selection)
-  readonly property string stateDirectory: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/lumen"
+  readonly property string stateDirectory: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/omarchy-lumen"
 
   readonly property var groupList: Model.groups(monitors, selection)
   readonly property var rowList: Model.rows(groupList, monitors.length)
@@ -50,7 +51,7 @@ Panel {
 
   property real wheelAccumulator: 0
 
-  // Pending `lumen set` calls, one at a time; a newer value for the same
+  // Pending `lumen-ddc set` calls, one at a time; a newer value for the same
   // setting replaces an older queued one.
   property var queue: []
   property var sliderPending: null
@@ -229,7 +230,7 @@ Panel {
 
   function heroStatus() {
     if (error !== "") return error
-    if (outdated) return strings.t("outdated", "This panel needs lumen 0.3 or newer. Update the lumen app.")
+    if (outdated) return strings.t("outdated", "This panel needs lumen-ddc 0.4 or newer. Update the Lumen app.")
     if (!loaded) return strings.t("reading", "Reading settings…")
     if (monitors.length === 0) return strings.t("noMonitors", "No monitors with DDC/CI found")
     var m = groupList.length > 0 ? groupList[0].monitor : monitors[0]
@@ -313,7 +314,7 @@ Panel {
     }
     onExited: function(code) {
       if (code !== 0 && root.monitors.length === 0 && root.error === "")
-        root.error = strings.t("missing", "Could not run lumen. Install it from the lumen project with bin/install.")
+        root.error = strings.t("missing", "Could not run lumen-ddc. Install the Lumen app: github.com/jimjeffers/lumen-ddc")
       root.loaded = true
     }
   }

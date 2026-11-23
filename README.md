@@ -2,7 +2,7 @@
 
 An Omarchy bar widget for external monitors over DDC/CI, from an icon next
 to the Display widget. Every monitor gets brightness, contrast and volume;
-models with a [lumen profile](https://github.com/jimjeffers/lumen#supported-monitors)
+models with a [Lumen profile](https://github.com/jimjeffers/lumen-ddc#supported-monitors)
 also get their own controls, such as picture modes and backlights.
 Scroll the icon to change brightness; click it for the panel. With two or
 more monitors, the picker in the top right chooses whether the controls
@@ -17,8 +17,9 @@ details.
 
 ## Requirements
 
-- [lumen](https://github.com/jimjeffers/lumen) 0.3 or newer, the app that
-  talks to the monitors. The widget runs `lumen state` and `lumen set`.
+- [Lumen](https://github.com/jimjeffers/lumen-ddc) (`lumen-ddc`) 0.4 or
+  newer, the app that talks to the monitors. The widget runs
+  `lumen-ddc state` and `lumen-ddc set`.
 - `ddcutil`, and DDC/CI turned on in each monitor's on-screen menu.
 - Your user needs access to `/dev/i2c-*` (Omarchy's default setup allows it;
   otherwise add yourself to the `i2c` group).
@@ -36,7 +37,7 @@ says so with a link to adding one.
 ## How it fits together
 
 The widget has no monitor knowledge of its own. Lumen matches each monitor to
-a profile and reports its controls in `lumen state`:
+a profile and reports its controls in `lumen-ddc state`:
 
 ```json
 { "connector": "DP-2", "model": "BenQ RD320U",
@@ -50,11 +51,11 @@ a profile and reports its controls in `lumen state`:
 
 `Model.js` turns that into rows (a slider, a row of buttons, or a switch per
 control, in profile order, skipping controls marked `"panel": false`), and
-`Panel.qml` draws them. Changes go back through `lumen set TARGET ID VALUE`.
+`Panel.qml` draws them. Changes go back through `lumen-ddc set TARGET ID VALUE`.
 
-So **adding a monitor needs no change here**: write a profile in the lumen
+So **adding a monitor needs no change here**: write a profile in the Lumen
 repository, following
-[docs/adding-a-monitor.md](https://github.com/jimjeffers/lumen/blob/main/docs/adding-a-monitor.md),
+[docs/adding-a-monitor.md](https://github.com/jimjeffers/lumen-ddc/blob/main/docs/adding-a-monitor.md),
 and its controls appear in the panel. Changes to this repository are for the
 panel itself: a new control type, layout, or translations.
 
@@ -70,7 +71,7 @@ Then add **Lumen** to the bar from the bar settings if it doesn't appear.
 
 | Setting | Default | |
 |---|---|---|
-| Path to lumen | empty | Leave empty to use `lumen` from `PATH` |
+| Path to lumen-ddc | empty | Leave empty to use `lumen-ddc` from `PATH` |
 
 ## Remove
 
