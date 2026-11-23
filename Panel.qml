@@ -7,10 +7,12 @@ import qs.Commons
 import qs.Commons as Commons
 import "Model.js" as Model
 
-// Lumen in the Omarchy bar: brightness, contrast, picture mode, color
-// temperature and volume for external monitors over DDC/CI. All monitor work
-// goes through the `lumen` command (lumen state / lumen set), which owns the
-// DDC queueing and the safeguard that turns a hub monitor back on.
+// Lumen in the Omarchy bar: monitor settings over DDC/CI. Which controls a
+// monitor has comes from its lumen profile (picture modes, backlights, …);
+// models without one get the standard controls and a note on adding them.
+// All monitor work goes through the `lumen` command (lumen state / lumen
+// set), which owns the DDC queueing and the safeguard that turns a hub
+// monitor back on.
 Panel {
   id: root
   moduleName: "io.github.jimjeffers.lumen"
@@ -29,6 +31,8 @@ Panel {
   property var monitors: []
   property string error: ""
   property bool loaded: false
+  property bool outdated: false
+  property string contributeUrl: ""
   // Which monitor the controls edit: "all" or a serial. Remembered across
   // restarts in the shell's state folder, not in shell.json, so picking a
   // monitor never rewrites the user's config.
@@ -54,6 +58,8 @@ Panel {
   function refresh() {
     if (!stateProc.running && !setProc.running && queue.length === 0) stateProc.running = true
   }
+
+  function control(monitor, id) { return Model.control(monitor, id) }
 
   function change(target, setting, value) {
     monitors = Model.applyLocal(monitors, target, setting, value)
@@ -89,6 +95,8 @@ Panel {
 
   function applyState(text) {
     var parsed = Model.parseState(text)
+    outdated = parsed.outdated
+    if (parsed.contribute !== "") contributeUrl = parsed.contribute
     if (parsed.monitors.length > 0 || parsed.error !== "") {
       monitors = parsed.monitors
       error = parsed.error
@@ -116,13 +124,17 @@ Panel {
     selectionFile.setText(selection + "\n")
   }
 
-  function settingLabel(setting) {
-    if (setting === "brightness") return strings.t("brightness", "Brightness")
-    if (setting === "contrast") return strings.t("contrast", "Contrast")
-    if (setting === "volume") return strings.t("volume", "Speaker volume")
-    if (setting === "mode") return strings.t("mode", "Picture mode")
-    if (setting === "halo") return strings.t("halo", "Backlight")
-    return setting
+  // Standard controls get translated labels; a profile's own controls keep
+  // the label the profile gives them.
+  function controlLabel(c) {
+    var known = { brightness: "Brightness", contrast: "Contrast", volume: "Speaker volume",
+                  mode: "Picture mode", temp: "Color temperature" }
+    return known[c.id] !== undefined ? strings.t(c.id, known[c.id]) : c.label
+  }
+
+  function unsupportedText(models) {
+    return strings.t("unsupported", "%1 has no Lumen profile yet, so only standard controls are shown. Add one so everyone with this monitor gets its full controls.")
+      .arg(models.join(", "))
   }
 
   // ---- keyboard cursor ----
@@ -151,7 +163,8 @@ Panel {
   }
 
   function pillIndexOfCurrent(row) {
-    var c = groupList[row.group].monitor[row.setting]
+    var c = control(groupList[row.group].monitor, row.setting)
+    if (!c) return 0
     for (var i = 0; i < c.options.length; i++)
       if (c.options[i].value === c.value) return i
     return 0
@@ -169,8 +182,10 @@ Panel {
     if (!r) return
     if (r.kind === "slider") {
       var g = groupList[r.group]
-      var l = g.monitor[r.setting]
-      change(g.target, r.setting, Model.clamp(l.value + dx * 5, 0, l.max))
+      var l = control(g.monitor, r.setting)
+      if (l) change(g.target, r.setting, Model.clamp(l.value + dx * 5, 0, l.max))
+    } else if (r.kind === "toggle") {
+      toggleControl(r)
     } else if (r.kind === "pills") {
       cursorCol = Math.max(0, Math.min(r.count - 1, cursorCol + dx))
     }
@@ -184,11 +199,20 @@ Panel {
       if (picker) picker.open()
       return
     }
+    if (r.kind === "toggle") { toggleControl(r); return }
     if (r.kind === "pills") {
       var g = groupList[r.group]
-      var option = g.monitor[r.setting].options[cursorCol]
+      var c = control(g.monitor, r.setting)
+      var option = c ? c.options[cursorCol] : null
       if (option) change(g.target, r.setting, option.value)
     }
+  }
+
+  function toggleControl(row) {
+    var g = groupList[row.group]
+    var c = control(g.monitor, row.setting)
+    if (!c || c.options.length < 2) return
+    change(g.target, row.setting, Model.toggleOn(c) ? c.options[1].value : c.options[0].value)
   }
 
   function ensureCursorVisible(item) {
@@ -205,13 +229,15 @@ Panel {
 
   function heroStatus() {
     if (error !== "") return error
+    if (outdated) return strings.t("outdated", "This panel needs lumen 0.3 or newer. Update the lumen app.")
     if (!loaded) return strings.t("reading", "Reading settings…")
     if (monitors.length === 0) return strings.t("noMonitors", "No monitors with DDC/CI found")
     var m = groupList.length > 0 ? groupList[0].monitor : monitors[0]
-    var mode = Model.prettyLabel(Model.currentLabel(m.mode))
+    var mode = Model.prettyLabel(Model.currentLabel(control(m, "mode")))
+    var brightness = control(m, "brightness")
     var parts = []
     if (mode !== "") parts.push(mode)
-    if (m.brightness.value >= 0) parts.push(Commons.I18n.formatNumber(m.brightness.value) + "%")
+    if (brightness && brightness.value >= 0) parts.push(Commons.I18n.formatNumber(brightness.value) + "%")
     return parts.join(" · ").toUpperCase()
   }
 
@@ -324,8 +350,8 @@ Panel {
       root.wheelAccumulator = wheel.remainder
       if (wheel.steps === 0) return
       var g = root.groupList[0]
-      var l = g.monitor.brightness
-      if (l.value < 0) return
+      var l = root.control(g.monitor, "brightness")
+      if (!l || l.value < 0) return
       var value = Model.clamp(l.value + wheel.steps * 5, 0, l.max)
       root.previewSlider(g.target, "brightness", value)
       root.showBrightnessOsd(value)
@@ -412,7 +438,7 @@ Panel {
               Text {
                 textFormat: Text.PlainText
                 text: root.heroStatus()
-                color: root.error !== "" ? Commons.Color.urgent : root.dim
+                color: root.error !== "" || root.outdated ? Commons.Color.urgent : root.dim
                 font.family: root.fontFamily
                 font.pixelSize: Style.font.caption
                 font.bold: true
@@ -465,11 +491,64 @@ Panel {
                 width: parent.width
               }
 
-              PillRow { setting: "mode"; group: section.group; groupIndex: section.index; width: parent.width }
-              PillRow { setting: "halo"; group: section.group; groupIndex: section.index; width: parent.width }
-              SliderRow { setting: "brightness"; group: section.group; groupIndex: section.index; width: parent.width }
-              SliderRow { setting: "contrast"; group: section.group; groupIndex: section.index; width: parent.width }
-              SliderRow { setting: "volume"; group: section.group; groupIndex: section.index; width: parent.width }
+              // A monitor without a profile: say so, and point at how to add one.
+              Column {
+                id: unsupportedNote
+                readonly property var models: Model.unsupportedModels(root.monitors, section.group)
+                visible: models.length > 0
+                width: parent.width
+                spacing: Style.space(8)
+
+                Text {
+                  textFormat: Text.PlainText
+                  text: root.unsupportedText(unsupportedNote.models)
+                  color: root.dim
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  wrapMode: Text.Wrap
+                  width: parent.width
+                }
+
+                Button {
+                  visible: root.contributeUrl !== ""
+                  text: strings.t("contribute", "How to add your monitor")
+                  iconText: "󰈈"
+                  fontSize: Style.font.caption
+                  foreground: root.foreground
+                  fontFamily: root.fontFamily
+                  bordered: true
+                  onClicked: {
+                    root.close()
+                    Qt.openUrlExternally(root.contributeUrl)
+                  }
+                }
+              }
+
+              // The monitor's controls, in its profile's order.
+              Repeater {
+                model: Model.panelControls(section.monitor)
+
+                Loader {
+                  required property var modelData
+                  width: section.width
+                  sourceComponent: modelData.type === "slider" ? sliderComponent
+                    : modelData.type === "toggle" ? toggleComponent
+                    : pillsComponent
+
+                  Component {
+                    id: sliderComponent
+                    SliderRow { control: modelData; group: section.group; groupIndex: section.index }
+                  }
+                  Component {
+                    id: pillsComponent
+                    PillRow { control: modelData; group: section.group; groupIndex: section.index }
+                  }
+                  Component {
+                    id: toggleComponent
+                    ToggleRow { control: modelData; group: section.group; groupIndex: section.index }
+                  }
+                }
+              }
             }
           }
 
@@ -506,12 +585,12 @@ Panel {
   // A labelled slider for one continuous setting.
   component SliderRow: Column {
     id: sliderRow
-    required property string setting
+    required property var control
     required property var group
     required property int groupIndex
-    readonly property var level: group.monitor[setting]
+    readonly property string setting: control.id
+    readonly property var level: control
 
-    visible: level && level.value >= 0
     spacing: Style.space(6)
 
     Item {
@@ -519,7 +598,7 @@ Panel {
       implicitHeight: Math.max(sliderHeader.implicitHeight, sliderValue.implicitHeight)
       PanelSectionHeader {
         id: sliderHeader
-        text: root.settingLabel(sliderRow.setting)
+        text: root.controlLabel(sliderRow.control)
         foreground: root.foreground
         fontFamily: root.fontFamily
         anchors.left: parent.left
@@ -572,17 +651,17 @@ Panel {
   // A labelled row of buttons for a setting with fixed values.
   component PillRow: Column {
     id: pillRow
-    required property string setting
+    required property var control
     required property var group
     required property int groupIndex
-    readonly property var choice: group.monitor[setting]
-    readonly property int columns: Math.min(3, choice ? choice.options.length : 1)
+    readonly property string setting: control.id
+    readonly property var choice: control
+    readonly property int columns: Math.min(3, choice.options.length)
 
-    visible: choice !== null && choice !== undefined && choice.options.length > 0
     spacing: Style.space(8)
 
     PanelSectionHeader {
-      text: root.settingLabel(pillRow.setting)
+      text: root.controlLabel(pillRow.control)
       foreground: root.foreground
       fontFamily: root.fontFamily
     }
@@ -616,6 +695,25 @@ Panel {
         }
       }
     }
+  }
+
+  // An on/off setting, such as a backlight. The profile's note, if any, sits
+  // under the label.
+  component ToggleRow: Toggle {
+    id: toggleRow
+    required property var control
+    required property var group
+    required property int groupIndex
+    label: root.controlLabel(control)
+    description: control.note
+    foreground: root.foreground
+    accent: Commons.Color.accent
+    fontFamily: root.fontFamily
+    checked: Model.toggleOn(control)
+    hasCursor: root.isCursor("toggle", control.id, groupIndex)
+    onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(toggleRow)
+    onClicked: root.toggleControl({ group: groupIndex, setting: control.id })
+    onHovered: function(h) { if (h) root.setCursor("toggle", control.id, groupIndex) }
   }
 
   // Chooses which monitor the controls edit: a button showing the current

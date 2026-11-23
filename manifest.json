@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "io.github.jimjeffers.lumen",
   "name": "Lumen",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "author": "Jim Jeffers",
   "license": "MIT",
-  "description": "Picture mode, brightness, contrast and volume for external monitors over DDC/CI.",
+  "description": "Monitor settings over DDC/CI: brightness, contrast and volume for any monitor, plus picture modes, backlights and more for models with a lumen profile.",
   "kinds": [
     "bar-widget"
   ],

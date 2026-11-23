@@ -7,10 +7,13 @@
   "contrast": "Contrast",
   "volume": "Speaker volume",
   "mode": "Picture mode",
-  "halo": "Backlight",
   "open": "Open Lumen",
   "reading": "Reading settings…",
   "noMonitors": "No monitors with DDC/CI found",
   "missing": "Could not run lumen. Install it from the lumen project with bin/install.",
-  "numbered": "Monitor %1"
+  "numbered": "Monitor %1",
+  "temp": "Color temperature",
+  "unsupported": "%1 has no Lumen profile yet, so only standard controls are shown. Add one so everyone with this monitor gets its full controls.",
+  "contribute": "How to add your monitor",
+  "outdated": "This panel needs lumen 0.3 or newer. Update the lumen app."
 }
