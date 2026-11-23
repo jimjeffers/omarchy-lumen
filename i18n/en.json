@@ -1,0 +1,19 @@
+{
+  "title": "Monitors",
+  "link": "Link monitors",
+  "linkDescription": "Changes apply to every monitor",
+  "all": "All monitors",
+  "left": "Left",
+  "right": "Right",
+  "middle": "Middle",
+  "brightness": "Brightness",
+  "contrast": "Contrast",
+  "volume": "Speaker volume",
+  "mode": "Picture mode",
+  "temp": "Color temperature",
+  "halo": "Backlight",
+  "open": "Open Lumen",
+  "reading": "Reading settings…",
+  "noMonitors": "No monitors with DDC/CI found",
+  "missing": "Could not run lumen. Install it from the lumen project with bin/install."
+}
